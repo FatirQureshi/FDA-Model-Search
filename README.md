@@ -4,7 +4,7 @@ FDA_Model_Search
 FDA_Model_Search is a MATLAB function that systematically evaluates all possible n feature combinations from a dataset, fits a Fisher Discriminant Analysis (FDA, equivalent to LDA for two classes) model to each, and identifies those models that meet or exceed a user-specified AUROC (Area Under the Receiver Operating Characteristic Curve) threshold. This is particularly useful for feature selection and model performance screening in classification tasks.
 
 Features
-Exhaustive Search: Evaluates all 4-feature combinations from the input data.
+Exhaustive Search: Evaluates all n number of feature combinations from the input data.
 
 FDA/LDA Modeling: Fits an FDA (LDA) model to each feature subset.
 
