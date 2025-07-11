@@ -1,0 +1,30 @@
+function [All_auc_sum,All_pts,FalsePositive,FalseNegative, CV_Accuracy] = FDA_CV_AUROC(best_model,labels)
+%The purpose of this function is to cross validate a model using a
+%leave-one-out paradigm
+%Determining the ROC position to maximize accuracy can be applied and used
+%to predict the missing sample to get CV accuracy
+All_auc_sum=[];
+All_pts=[];
+FalsePositive=0;
+FalseNegative=0;
+for q=1:height(best_model)-1
+    sub_ASD=best_model;
+    sub_Labels=labels;
+    sub_ASD(q,:)=[];
+    sub_Labels(q,:)=[];
+
+    [final_AUC,T,W,SUBYNAMES] = FDA_AUC(sub_Labels,1,sub_ASD);
+    iteration_FDA=table2array(best_model(q,:))*W;
+    if iteration_FDA>T && table2array(labels(q,:))==SUBYNAMES
+
+        FalsePositive=FalsePositive+1;
+    end
+    if iteration_FDA<T && table2array(labels(q,:))~=SUBYNAMES
+
+        FalseNegative=FalseNegative+1;
+    end
+    All_auc_sum=[All_auc_sum,final_AUC];
+    %All_pts=[All_pts;opts]
+end
+CV_Accuracy=1-((FalsePositive+FalseNegative)/height(best_model));
+end
