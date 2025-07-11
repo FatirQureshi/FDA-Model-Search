@@ -1,0 +1,88 @@
+function all_auc = FDA_Model_Search(trans_table, labels, auc_thresh)
+% FDA_MODEL_SEARCH identifies all possible LDA models meeting a specified AUROC threshold.
+%
+%   all_auc = FDA_Model_Search(trans_table, labels, auc_thresh)
+%
+%   Inputs:
+%       trans_table : Table of predictor variables (observations x features)
+%       labels      : Column vector or table of class labels
+%       auc_thresh  : Minimum AUROC threshold for model selection (scalar)
+%
+%   Output:
+%       all_auc     : Matrix where each row contains:
+%                       [feature indices, AUROC, CV accuracy]
+%
+%   This function evaluates all 4-feature combinations from trans_table,
+%   fits an LDA model, computes AUROC, and retains models meeting auc_thresh.
+%
+%   Requires: FDA_CV_AUROC (custom function for cross-validation and AUROC)
+
+% Validate inputs
+if ~istable(trans_table)
+    error('trans_table must be a MATLAB table.');
+end
+if ~isvector(labels)
+    error('labels must be a vector or a single-column table.');
+end
+if istable(labels)
+    labels = table2array(labels);
+end
+if ~isscalar(auc_thresh) || ~isnumeric(auc_thresh)
+    error('auc_thresh must be a numeric scalar.');
+end
+
+% Generate all 4-feature combinations
+num_features = width(trans_table);
+combos = nchoosek(1:num_features, 4);
+
+all_auc = [];
+index = 0;
+
+for i = 1:size(combos, 1)
+    % Select feature subset
+    feature_idx = combos(i, :);
+    X = table2array(trans_table(:, feature_idx));
+    y = labels(:); % Ensure column vector
+
+    % Fisher Discriminant Analysis (FDA)
+    classes = unique(y);
+    k = numel(classes);
+    dim = size(X, 2);
+    SB = zeros(dim);
+    SW = zeros(dim);
+    X_mean = mean(X);
+
+    for j = 1:k
+        class_mask = (y == classes(j));
+        X_class = X(class_mask, :);
+        X_class_mean = mean(X_class);
+        r = X_class_mean - X_mean;
+        SB = SB + size(X_class, 1) * (r' * r);
+        for n = 1:size(X_class, 1)
+            r2 = X_class(n, :) - X_class_mean;
+            SW = SW + r2' * r2;
+        end
+    end
+
+    % Solve generalized eigenvalue problem
+    [W, Lambda] = eig(SB, SW, 'qz');
+    lambda_diag = diag(Lambda);
+    [~, sort_order] = sort(lambda_diag, 'descend');
+    W = W(:, sort_order);
+    W = W(:, 1); % Project to 1D for binary classification
+
+    % Project data and compute AUROC
+    Y = X * W;
+    [~, ~, ~, auc] = perfcurve(y, Y, classes(1));
+    if auc < 0.5
+        auc = 1 - auc;
+    end
+
+    % Retain models meeting AUROC threshold
+    if auc >= auc_thresh
+        [~, ~, ~, ~, cv_acc] = FDA_CV_AUROC(array2table(X), y);
+        index = index + 1;
+        all_auc(index, :) = [feature_idx, auc, cv_acc];
+    end
+end
+end
