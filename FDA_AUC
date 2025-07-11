@@ -1,0 +1,68 @@
+function [final_AUC,ThresholdForOptROCpt, W,SUBYNAMES] = FDA_AUC(labels,number_var,core5)
+%t=table2array(all_elements);
+t=table2array(core5);
+t1=table2array(labels);
+t2=(number_var);
+X=t;
+label=t1;
+m=t2;
+
+classes = unique(label); 
+k = numel(classes); 
+dim = size(X,2); 
+
+SB = zeros(dim);
+SW = zeros(dim); 
+
+X_ = mean(X); 
+
+%disp(X)
+count=[];
+for i = 1 : k 
+v = label == classes(i); 
+
+Xl = X(v,:);
+
+Xl_ = mean(Xl);
+
+r = Xl_-X_; 
+SB = SB + size(Xl,1)*( r'*r ); 
+
+for j = 1 : size(Xl,1) 
+r = Xl(j,:)-Xl_; 
+SW = SW + r'*r; 
+
+end 
+
+end 
+
+for q = 1 : 38
+count(q)=q;
+end 
+[W, LAMBDA]=eig(SB,SW,'qz'); 
+lambda=diag(LAMBDA);
+
+[temp, SortOrder] = sort(lambda,'descend');
+
+W=W(:,SortOrder); 
+W=W(:,1:m); 
+Y=X*W; 
+
+length(count);
+class(Y);
+trueY=(Y-mean(Y));
+%scatter(count,Y);
+%disp(length(count))
+[VC,VV,T,AUC,OPTROCPT,SUBY,SUBYNAMES]=perfcurve(label,Y,label(1));
+ThresholdForOptROCpt = T((VC==OPTROCPT(1))&(VV==OPTROCPT(2)));
+if AUC <.5
+    AUC=1-AUC;
+end
+final_AUC=AUC;
+%plot(count(1:22),trueY(1:22),'r*','MarkerSize',12,'LineWidth',2.0), hold on
+%plot(count(23:47),trueY(23:47),'b*','MarkerSize',12,'LineWidth',2.0)
+%title('All elements Fisher Discriminant Analysis of ASD and TD Children')
+%xlabel('Sample Number') 
+%ylabel('FDA Score')
+%plot(Y,count)
+end
